@@ -1,0 +1,31 @@
+services:
+  api:
+    build: .
+    ports:
+      - "9999:9999"
+    volumes:
+      - .:/app
+      - ./data:/data
+    depends_on:
+      - mongodb
+    env_file: .env
+    restart: always
+    networks:
+      - app-network
+  mongodb:
+    image: mongo:latest
+    env_file: .env
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
+volumes:
+  mongo_data:
