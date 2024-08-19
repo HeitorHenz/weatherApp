@@ -8,7 +8,7 @@ Despite still being available, the endpoint used(`https://api.openweathermap.org
 ***
 ## How to run
 
-Run `docker compose up --build` at the root directory
+Run `docker compose up --build -d` at the root directory
 ***
 ## Usage
 
@@ -28,7 +28,11 @@ As is the case with the `?group` endpoint, further id's can only be found with w
 
 Additional customisation can be achieved by editing the `settings.py` file.
 
-### Reasoning behind the stack
+## Testing
+
+Run `docker compose exec api python3 -m pytest --cov-report term --cov=src`
+
+## Reasoning behind the stack
 *FastAPI* and it's dependencies(such as pydantic) make for a great starting point for an async application,
 while also providing automatic documentation for ease of use.\
 *httpx* was already used as a dependency for FastAPI testing, so it was an adequate choice for making async calls.\

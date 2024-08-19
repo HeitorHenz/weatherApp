@@ -5,7 +5,6 @@ services:
       - "9999:9999"
     volumes:
       - .:/app
-      - ./data:/data
     depends_on:
       - mongodb
     env_file: .env

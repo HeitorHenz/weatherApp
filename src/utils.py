@@ -7,8 +7,8 @@ from .settings import APISettings
 
 class Utils:
     @staticmethod
-    def cities_list() -> list[str]:
-        with open('static/cities.csv') as f:
+    def cities_list(path: str = 'static/cities.csv') -> list[str]:
+        with open(path) as f:
             return next(csv.reader(f))
 
     @staticmethod
@@ -66,7 +66,7 @@ class ProgressTracker:
 
     @property
     def finished(self) -> bool:
-        if len(self.retrieved_cities) == self.total_cities:
+        if len(self.retrieved_cities) == self.total_cities and self.total_cities != 0:
             ProgressTracker.ongoing_requests.remove(self)
             return True
         return False
@@ -86,7 +86,7 @@ class ProgressTracker:
         return
 
     def retry_group(self, group: list[str]) -> None:
-        self.add_to_retrieved_cities(group)
+        self.remaining_cities.extend(group)
         self.retries += 1
         return
 

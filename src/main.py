@@ -2,39 +2,40 @@ import asyncio
 import logging
 import httpx
 from datetime import datetime
-from contextlib import asynccontextmanager
+from typing import Annotated
 from .models import Output
 from .settings import APISettings, DBSettings
 from .utils import Utils, RateLimiter, ProgressTracker
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 import motor.motor_asyncio
 
 
-cities = {}
+async def context():
+    input_path = 'static/cities.csv'
+    db_name = 'db'
+    collection_name = 'weather_data'
+    client = motor.motor_asyncio.AsyncIOMotorClient(DBSettings.get_connection())
+    db = client[db_name]
+    collection = db[collection_name]
+    await collection.create_index([("unique_id", 1)], unique=True)
+
+    return {
+        'input': Utils.cities_list(input_path),
+        'collection': collection
+    }
 
 
-# Loading the csv on startup
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    cities['list'] = Utils.cities_list()
-    yield
-    cities.clear()
-
-app = FastAPI(lifespan=lifespan)
-conn_string = DBSettings.get_connection()
-client = motor.motor_asyncio.AsyncIOMotorClient(conn_string)
-db = client['db']
-collection = db['weather_data']
-collection.create_index([("unique_id", 1)], unique=True)
+app = FastAPI()
 
 
 @app.post('/data/{unique_id}', response_model=Output | str)
-async def retrieve_cities_weather(unique_id: str):
-    uid = await collection.find_one({'unique_id': unique_id})
+async def retrieve_cities_weather(unique_id: str, data: Annotated[dict, Depends(context)]):
+    uid = await data['collection'].find_one({'unique_id': unique_id})
     if ProgressTracker.get_ongoing_by_id(unique_id) or uid:
         err = f'Inputted id:{unique_id} is already registered. Please provide a valid unique_id'
         raise HTTPException(status_code=400, detail=err)
-    pt = ProgressTracker(unique_id, cities['list'])
+    pt = ProgressTracker(unique_id, data['input'])
+
     request_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cities_data = []
     while not pt.finished:
@@ -73,7 +74,7 @@ async def retrieve_cities_weather(unique_id: str):
             'datetime': request_datetime,
             'response': cities_data
         }
-        await collection.insert_one(output_item)
+        await data['collection'].insert_one(output_item)
         del pt
         return output_item
 
@@ -88,8 +89,8 @@ async def get_progress(unique_id: str):
 
 
 @app.get('/')
-async def get_data():
-    c = await collection.find().to_list(length=1000)
+async def get_data(data: Annotated[dict, Depends(context)]):
+    c = await data['collection'].find().to_list(length=1000)
     out = []
     for e in c:
         e.pop('_id')

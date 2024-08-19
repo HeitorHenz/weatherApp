@@ -23,7 +23,8 @@ class APISettings:
 
 
 class DBSettings:
-    host = 'localhost'
+    # host = 'localhost'
+    host = 'mongodb'
     port = '27017'
 
     @classmethod
